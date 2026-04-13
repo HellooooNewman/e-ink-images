@@ -44,6 +44,26 @@
   function onDragLeave() {
     dragOver = false
   }
+
+  const demoImages = [
+    { name: 'wallhaven-g8o8kd.jpg', type: 'image/jpeg' },
+    { name: 'wallhaven-l8v3ey.png', type: 'image/png' },
+    { name: 'wallhaven-jxqrw5.jpg', type: 'image/jpeg' },
+    { name: 'wallhaven-j5mz95.png', type: 'image/png' },
+  ]
+
+  async function loadDemoImages(e) {
+    e.preventDefault()
+    e.stopPropagation()
+    const files = await Promise.all(
+      demoImages.map(async ({ name, type }) => {
+        const res = await fetch(`${import.meta.env.BASE_URL}${name}`)
+        const blob = await res.blob()
+        return new File([blob], name, { type })
+      })
+    )
+    await handleFiles(files)
+  }
 </script>
 
 <div
@@ -71,6 +91,7 @@
       <span class="upload-hint">JPG, PNG, BMP</span>
     {/if}
   </label>
+  <button class="demo-btn" onclick={loadDemoImages} disabled={processing}>Load Demo Images</button>
 </div>
 
 <style>
@@ -113,5 +134,26 @@
   .upload-hint {
     color: var(--text-muted);
     font-size: 0.75rem;
+  }
+
+  .demo-btn {
+    margin-top: 0.75rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .demo-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .demo-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>

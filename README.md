@@ -48,6 +48,19 @@ Output goes to `dist/`.
 npm test
 ```
 
+## Demo Images
+
+Four sample wallpapers are included in `public/` for testing:
+
+| File | Description | Artist / Source |
+|------|-------------|-----------------|
+| `wallhaven-g8o8kd.jpg` | Space & Earth ultrawide | [wallhaven.cc/w/g8o8kd](https://wallhaven.cc/w/g8o8kd) — uploaded by eky5006 |
+| `wallhaven-l8v3ey.png` | Cyberpunk cityscape | [wallhaven.cc/w/l8v3ey](https://wallhaven.cc/w/l8v3ey) — [Pixiv source](https://www.pixiv.net/en/users/962370) |
+| `wallhaven-jxqrw5.jpg` | Mountain sunset landscape | [wallhaven.cc/w/jxqrw5](https://wallhaven.cc/w/jxqrw5) — [BisBiswas on DeviantArt](https://www.deviantart.com/bisbiswas/art/Clouds-on-Fire-986042877) |
+| `wallhaven-j5mz95.png` | Ariane 5 rocket launch | [wallhaven.cc/w/j5mz95](https://wallhaven.cc/w/j5mz95) — [Sylvain Sarrailh on ArtStation](https://www.artstation.com/artwork/JleA1z) |
+
+All images remain the property of their original authors and are included here for demo/testing purposes only.
+
 ## Stack
 
 - Svelte 5
