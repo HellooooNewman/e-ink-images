@@ -25,6 +25,8 @@
     images.set(updated)
   }
 
+  let showAdvanced = $state(false)
+
   function updateSetting(key, value) {
     settings.update((s) => ({ ...s, [key]: value }))
     if (key !== 'filenamePattern') {
@@ -113,59 +115,66 @@
     </div>
   </div>
 
-  <div class="setting-row">
-    <div class="setting-header">
-      <span class="setting-label">Palette</span>
-      <span class="setting-hint">Match the color capabilities of your e-ink display</span>
-    </div>
-    <div class="setting-options">
-      <select
-        class="select-input"
-        value={$settings.palette}
-        onchange={(e) => updateSetting('palette', e.target.value)}
-      >
-        {#each COLOR_PALETTES as pal}
-          <option value={pal.id}>
-            {pal.label} ({pal.colors.length} colors)
-          </option>
-        {/each}
-      </select>
-    </div>
-  </div>
+  <button class="advanced-toggle" onclick={() => showAdvanced = !showAdvanced}>
+    {showAdvanced ? 'Hide' : 'Show'} advanced settings
+    <span class="toggle-arrow">{showAdvanced ? '\u25B4' : '\u25BE'}</span>
+  </button>
 
-  <div class="setting-row">
-    <div class="setting-header">
-      <span class="setting-label">Dither</span>
-      <span class="setting-hint">Error diffusion for smoother gradients on limited palettes</span>
+  {#if showAdvanced}
+    <div class="setting-row">
+      <div class="setting-header">
+        <span class="setting-label">Palette</span>
+        <span class="setting-hint">Match the color capabilities of your e-ink display</span>
+      </div>
+      <div class="setting-options">
+        <select
+          class="select-input"
+          value={$settings.palette}
+          onchange={(e) => updateSetting('palette', e.target.value)}
+        >
+          {#each COLOR_PALETTES as pal}
+            <option value={pal.id}>
+              {pal.label} ({pal.colors.length} colors)
+            </option>
+          {/each}
+        </select>
+      </div>
     </div>
-    <div class="setting-options">
-      <label class="radio-label">
+
+    <div class="setting-row">
+      <div class="setting-header">
+        <span class="setting-label">Dither</span>
+        <span class="setting-hint">Error diffusion for smoother gradients on limited palettes</span>
+      </div>
+      <div class="setting-options">
+        <label class="radio-label">
+          <input
+            type="checkbox"
+            checked={$settings.dither}
+            onchange={(e) => updateSetting('dither', e.target.checked)}
+          />
+          Floyd-Steinberg
+        </label>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-header">
+        <span class="setting-label">Filename</span>
+        <span class="setting-hint">{'{name}'} = original, {'{n}'} = number, {'{nn}'} = padded</span>
+      </div>
+      <div class="setting-options">
         <input
-          type="checkbox"
-          checked={$settings.dither}
-          onchange={(e) => updateSetting('dither', e.target.checked)}
+          type="text"
+          class="text-input"
+          value={$settings.filenamePattern}
+          oninput={(e) => updateSetting('filenamePattern', e.target.value)}
+          placeholder="{'{name}'}"
         />
-        Floyd-Steinberg
-      </label>
+        <span class="filename-preview">{previewFilenames().join(', ')}</span>
+      </div>
     </div>
-  </div>
-
-  <div class="setting-row">
-    <div class="setting-header">
-      <span class="setting-label">Filename</span>
-      <span class="setting-hint">{'{name}'} = original, {'{n}'} = number, {'{nn}'} = padded</span>
-    </div>
-    <div class="setting-options">
-      <input
-        type="text"
-        class="text-input"
-        value={$settings.filenamePattern}
-        oninput={(e) => updateSetting('filenamePattern', e.target.value)}
-        placeholder="{'{name}'}"
-      />
-      <span class="filename-preview">{previewFilenames().join(', ')}</span>
-    </div>
-  </div>
+  {/if}
 </div>
 
 <style>
@@ -250,6 +259,26 @@
   .dim-separator {
     color: var(--text-muted);
     font-size: 0.85rem;
+  }
+
+  .advanced-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+  }
+
+  .advanced-toggle:hover {
+    color: var(--text);
+  }
+
+  .toggle-arrow {
+    font-size: 0.65rem;
+    margin-left: 0.25rem;
   }
 
   .text-input {

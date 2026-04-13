@@ -64,6 +64,13 @@
     ))
   }
 
+  function toggleCardExpand(id) {
+    const next = new Set(expandedCards)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    expandedCards = next
+  }
+
   function removeImage(id) {
     images.update((imgs) => {
       const removed = imgs.find((i) => i.id === id)
@@ -87,6 +94,7 @@
 
   let focusedImg = $state(null)
   let showBefore = $state(false)
+  let expandedCards = $state(new Set())
   let dragId = $state(null)
   let dropTargetId = $state(null)
 
@@ -200,28 +208,36 @@
           <span class="preview-filename" title={img.filename}>{img.filename}</span>
           <span class="preview-dims">{processedCanvas.width}×{processedCanvas.height}</span>
         </div>
-        <!-- svelte-ignore a11y_no_static_element_interactions -->
-        <div class="preview-adjustments" ondragstart={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-          <label class="adjust-row">
-            <span class="adjust-label">Brightness</span>
-            <input type="range" class="adjust-range" min="-100" max="100" value={img.brightness || 0}
-              onchange={(e) => updateImageAdjustment(img.id, 'brightness', parseInt(e.target.value))}
-              onpointerdown={(e) => e.stopPropagation()} />
-            <span class="adjust-value">{img.brightness || 0}</span>
-          </label>
-          <label class="adjust-row">
-            <span class="adjust-label">Contrast</span>
-            <input type="range" class="adjust-range" min="-100" max="100" value={img.contrast || 0}
-              onchange={(e) => updateImageAdjustment(img.id, 'contrast', parseInt(e.target.value))}
-              onpointerdown={(e) => e.stopPropagation()} />
-            <span class="adjust-value">{img.contrast || 0}</span>
-          </label>
-        </div>
         <div class="preview-actions">
           <button class="btn btn-small" onclick={() => downloadOne(img)}>Save BMP</button>
           <button class="btn btn-small" onclick={() => { viewer3dIndex = $images.findIndex(i => i.id === img.id) }}>View 3D</button>
           <button class="btn btn-small btn-muted" onclick={() => removeImage(img.id)}>Remove</button>
+          <button class="card-toggle" onclick={() => toggleCardExpand(img.id)}>
+            {expandedCards.has(img.id) ? 'Less' : 'More'}
+          </button>
         </div>
+        {#if expandedCards.has(img.id)}
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div class="preview-adjustments"
+            draggable="false"
+            ondragstart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onmousedown={(e) => e.stopPropagation()}
+            onpointerdown={(e) => e.stopPropagation()}
+          >
+            <label class="adjust-row">
+              <span class="adjust-label">Brightness</span>
+              <input type="range" class="adjust-range" min="-100" max="100" value={img.brightness || 0}
+                onchange={(e) => updateImageAdjustment(img.id, 'brightness', parseInt(e.target.value))} />
+              <span class="adjust-value">{img.brightness || 0}</span>
+            </label>
+            <label class="adjust-row">
+              <span class="adjust-label">Contrast</span>
+              <input type="range" class="adjust-range" min="-100" max="100" value={img.contrast || 0}
+                onchange={(e) => updateImageAdjustment(img.id, 'contrast', parseInt(e.target.value))} />
+              <span class="adjust-value">{img.contrast || 0}</span>
+            </label>
+          </div>
+        {/if}
       </div>
     {/each}
   </div>
@@ -245,6 +261,7 @@
       </div>
       <div class="modal-actions">
         <button class="btn" onclick={() => downloadOne(modalImage)}>Save BMP</button>
+        <button class="btn" onclick={() => { const idx = $images.findIndex(i => i.id === modalImage.id); closeModal(); viewer3dIndex = idx }}>View 3D</button>
       </div>
     </div>
   </div>
@@ -267,6 +284,11 @@
     overflow: hidden;
     cursor: grab;
     transition: opacity 0.15s, border-color 0.15s;
+  }
+
+  .preview-card.focused {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
   }
 
   .preview-card.dragging {
@@ -384,9 +406,26 @@
   .preview-actions {
     padding: 0.5rem 0.75rem;
     display: flex;
+    align-items: center;
     gap: 0.5rem;
     border-top: 1px solid var(--border);
   }
+
+  .card-toggle {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    cursor: pointer;
+    padding: 0;
+    margin-left: auto;
+  }
+
+  .card-toggle:hover {
+    color: var(--text);
+  }
+
 
   /* Modal */
   .modal-backdrop {
