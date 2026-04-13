@@ -10,11 +10,13 @@
   let playing = $state(false)
   let transitioning = $state(false)
   let playInterval = null
-  const PLAY_DELAY = 5000 // ms between images
-  const FLASH_DURATION = 600 // total flash animation ms
+  const PLAY_DELAY = 5000 // ms between images (after transition completes)
+  const TRANSITION_DURATION = 2800 // approximate refresh cycle length
 
   let renderer, scene, camera, controls, frameMesh, screenMesh, screenMaterial, backMesh
   let animationId
+  // Offscreen canvas for compositing transition frames
+  let transitionCanvas, transitionCtx
 
   function canvasToTexture(canvas) {
     const tex = new THREE.CanvasTexture(canvas)
@@ -24,52 +26,166 @@
     return tex
   }
 
+  function setScreenFromCanvas(canvas) {
+    if (!screenMaterial) return
+    if (screenMaterial.map) screenMaterial.map.dispose()
+    screenMaterial.map = canvasToTexture(canvas)
+    screenMaterial.color.setScalar(1.0)
+    screenMaterial.needsUpdate = true
+  }
+
   /**
-   * Simulate e-ink display refresh — progressive buildup.
-   * Sets the new texture immediately, then animates material color
-   * from black through grays to white so the image appears to
-   * "build up" in passes like real e-ink particle settling.
+   * Simulate 7-color ACeP e-ink refresh cycle.
+   *
+   * Phase 1 — Global clear: flash old image to black, then white, repeated.
+   *           This "shakes loose" all pigment particles.
+   * Phase 2 — Color waveform passes: the new image builds up color by color.
+   *           Each pass reveals one color channel while others remain muted,
+   *           with brief white flashes between passes (waveform resets).
+   * Phase 3 — Final settling: image snaps to full clarity.
    */
-  function flashTransition(callback) {
-    if (!screenMaterial) { callback(); return }
+  function flashTransition(oldCanvas, newCanvas) {
+    if (!screenMaterial) return
     transitioning = true
 
-    // Set the new image texture right away
-    callback()
+    const w = newCanvas.width
+    const h = newCanvas.height
 
-    // Darken to black, then progressively reveal
-    const steps = [
-      { brightness: 0.0,  delay: 0 },                     // black — clear
-      { brightness: 0.05, delay: FLASH_DURATION * 0.08 },  // faintest ghost
-      { brightness: 0.12, delay: FLASH_DURATION * 0.16 },
-      { brightness: 0.25, delay: FLASH_DURATION * 0.26 },
-      { brightness: 0.40, delay: FLASH_DURATION * 0.38 },
-      { brightness: 0.55, delay: FLASH_DURATION * 0.50 },
-      { brightness: 0.70, delay: FLASH_DURATION * 0.62 },
-      { brightness: 0.82, delay: FLASH_DURATION * 0.74 },
-      { brightness: 0.92, delay: FLASH_DURATION * 0.85 },
-      { brightness: 1.0,  delay: FLASH_DURATION * 0.95 },  // full image
+    if (!transitionCanvas) {
+      transitionCanvas = document.createElement('canvas')
+      transitionCtx = transitionCanvas.getContext('2d')
+    }
+    transitionCanvas.width = w
+    transitionCanvas.height = h
+
+    // Get old image pixel data for fade-out
+    let oldImgData = null
+    if (oldCanvas) {
+      const tmpOld = document.createElement('canvas')
+      tmpOld.width = w
+      tmpOld.height = h
+      tmpOld.getContext('2d').drawImage(oldCanvas, 0, 0, w, h)
+      oldImgData = tmpOld.getContext('2d').getImageData(0, 0, w, h)
+    }
+
+    // Get new image pixel data for buildup
+    const tmpNew = document.createElement('canvas')
+    tmpNew.width = w
+    tmpNew.height = h
+    tmpNew.getContext('2d').drawImage(newCanvas, 0, 0)
+    const newImgData = tmpNew.getContext('2d').getImageData(0, 0, w, h)
+
+    const channels = [
+      { filter: (r, g, b) => { const l = 0.299*r + 0.587*g + 0.114*b; return l < 60 } },
+      { filter: (r, g, b) => { const l = 0.299*r + 0.587*g + 0.114*b; return l < 100 } },
+      { filter: (r, g, b) => { const l = 0.299*r + 0.587*g + 0.114*b; return l < 150 } },
+      { filter: () => true },
     ]
 
+    const steps = []
+    let t = 0
+
+    // --- Phase 1: Fade out old image toward white ---
+    if (oldImgData) {
+      // Progressively wash out the old image
+      const fadeSteps = [0.75, 0.5, 0.3, 0.15, 0.05]
+      for (const strength of fadeSteps) {
+        steps.push({ time: t, type: 'fadeOld', strength })
+        t += 150
+      }
+    }
+
+    // Blank white canvas — old image fully cleared
+    steps.push({ time: t, type: 'solid', color: [255, 255, 255] })
+    t += 200
+
+    // --- Phase 2: Build up new image from darkest tones to full ---
+    steps.push({ time: t, type: 'channel', channel: 0, strength: 0.3 })
+    t += 220
+    steps.push({ time: t, type: 'channel', channel: 0, strength: 0.5 })
+    t += 180
+    steps.push({ time: t, type: 'channel', channel: 1, strength: 0.45 })
+    t += 220
+    steps.push({ time: t, type: 'channel', channel: 1, strength: 0.6 })
+    t += 180
+    steps.push({ time: t, type: 'channel', channel: 2, strength: 0.55 })
+    t += 180
+    steps.push({ time: t, type: 'channel', channel: 2, strength: 0.7 })
+    t += 160
+    steps.push({ time: t, type: 'channel', channel: 3, strength: 0.75 })
+    t += 160
+    steps.push({ time: t, type: 'channel', channel: 3, strength: 0.85 })
+    t += 140
+    steps.push({ time: t, type: 'channel', channel: 3, strength: 0.94 })
+    t += 120
+
+    // --- Phase 3: Final settle ---
+    steps.push({ time: t, type: 'final' })
+    t += 10
+
+    const totalDuration = t
+
+    // Render each step
     for (const step of steps) {
       setTimeout(() => {
-        if (screenMaterial) {
-          screenMaterial.color.setScalar(step.brightness)
-          screenMaterial.needsUpdate = true
+        if (!screenMaterial) return
+        const ctx = transitionCtx
+        const src = newImgData.data
+
+        if (step.type === 'solid') {
+          ctx.fillStyle = `rgb(${step.color[0]},${step.color[1]},${step.color[2]})`
+          ctx.fillRect(0, 0, w, h)
+        } else if (step.type === 'fadeOld' && oldImgData) {
+          // Old image blended toward white
+          const outData = ctx.createImageData(w, h)
+          const out = outData.data
+          const old = oldImgData.data
+          const s = step.strength
+          for (let i = 0; i < old.length; i += 4) {
+            out[i]   = Math.round(old[i]   * s + 255 * (1 - s))
+            out[i+1] = Math.round(old[i+1] * s + 255 * (1 - s))
+            out[i+2] = Math.round(old[i+2] * s + 255 * (1 - s))
+            out[i+3] = 255
+          }
+          ctx.putImageData(outData, 0, 0)
+        } else if (step.type === 'channel') {
+          // Show new image filtered by channel with strength
+          const outData = ctx.createImageData(w, h)
+          const out = outData.data
+          const ch = channels[step.channel]
+          const s = step.strength
+
+          for (let i = 0; i < src.length; i += 4) {
+            const r = src[i], g = src[i+1], b = src[i+2]
+            if (ch.filter(r, g, b)) {
+              // Blend toward white based on inverse strength (washed out look)
+              out[i]   = Math.round(r * s + 255 * (1 - s))
+              out[i+1] = Math.round(g * s + 255 * (1 - s))
+              out[i+2] = Math.round(b * s + 255 * (1 - s))
+            } else {
+              out[i] = 255; out[i+1] = 255; out[i+2] = 255
+            }
+            out[i+3] = 255
+          }
+          ctx.putImageData(outData, 0, 0)
+        } else if (step.type === 'final') {
+          ctx.putImageData(newImgData, 0, 0)
         }
-      }, step.delay)
+
+        setScreenFromCanvas(transitionCanvas)
+      }, step.time)
     }
 
     setTimeout(() => {
+      // Ensure final image is clean
+      setScreenFromCanvas(newCanvas)
       transitioning = false
-    }, FLASH_DURATION)
+    }, totalDuration + 30)
   }
 
   function updateScreenImage() {
     if (!screenMaterial || !images[currentIndex]) return
-    screenMaterial.map = canvasToTexture(images[currentIndex].processedCanvas)
-    screenMaterial.color.setScalar(1.0)
-    screenMaterial.needsUpdate = true
+    setScreenFromCanvas(images[currentIndex].processedCanvas)
 
     const img = images[currentIndex].processedCanvas
     const aspect = img.width / img.height
@@ -81,18 +197,18 @@
     if (transitioning) return
     // Wrap around for looping
     newIndex = ((newIndex % images.length) + images.length) % images.length
-    currentIndex = newIndex
 
-    // Update geometry and texture for the new image, then flash builds it up
-    const img = images[currentIndex].processedCanvas
-    const aspect = img.width / img.height
+    // Capture old canvas before switching
+    const oldCanvas = images[currentIndex]?.processedCanvas || null
+    currentIndex = newIndex
+    const newCanvas = images[currentIndex].processedCanvas
+
+    // Update frame geometry for new aspect ratio
+    const aspect = newCanvas.width / newCanvas.height
     updateFrameGeometry(aspect)
 
-    flashTransition(() => {
-      if (!screenMaterial) return
-      screenMaterial.map = canvasToTexture(images[currentIndex].processedCanvas)
-      screenMaterial.needsUpdate = true
-    })
+    // Run the full e-ink refresh simulation
+    flashTransition(oldCanvas, newCanvas)
   }
 
   function updateFrameGeometry(aspect) {
@@ -288,7 +404,7 @@
       const next = (currentIndex + 1) % images.length
       navigateWithFlash(next)
       // Wait for flash to finish, then schedule next
-      setTimeout(() => advancePlay(), FLASH_DURATION + 100)
+      setTimeout(() => advancePlay(), TRANSITION_DURATION + 100)
     }, PLAY_DELAY)
   }
 
