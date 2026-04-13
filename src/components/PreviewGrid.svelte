@@ -2,8 +2,11 @@
   import { images, settings, applyFilenamePattern } from '../lib/stores.js'
   import { canvasToBmpBlob, downloadBlob } from '../lib/bmp.js'
   import { processImage } from '../lib/processor.js'
+  import FrameViewer from './FrameViewer.svelte'
 
   let modalImage = $state(null)
+  let viewer3dIndex = $state(-1)
+  let show3d = $derived(viewer3dIndex >= 0)
 
   function paintCanvas(el, srcCanvas) {
     el.width = srcCanvas.width
@@ -135,6 +138,7 @@
   }
 
   function onKeydown(e) {
+    if (show3d) return // 3D viewer handles its own keys
     if (e.key === 'Escape') closeModal()
     if (e.key === ' ') {
       e.preventDefault()
@@ -215,6 +219,7 @@
         </div>
         <div class="preview-actions">
           <button class="btn btn-small" onclick={() => downloadOne(img)}>Save BMP</button>
+          <button class="btn btn-small" onclick={() => { viewer3dIndex = $images.findIndex(i => i.id === img.id) }}>View 3D</button>
           <button class="btn btn-small btn-muted" onclick={() => removeImage(img.id)}>Remove</button>
         </div>
       </div>
@@ -243,6 +248,10 @@
       </div>
     </div>
   </div>
+{/if}
+
+{#if show3d}
+  <FrameViewer images={$images} startIndex={viewer3dIndex} onclose={() => viewer3dIndex = -1} />
 {/if}
 
 <style>

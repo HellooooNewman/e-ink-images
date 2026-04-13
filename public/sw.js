@@ -1,12 +1,6 @@
 const CACHE_NAME = 'eink-v1'
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll([
-      './',
-      './index.html',
-    ]))
-  )
   self.skipWaiting()
 })
 
@@ -20,6 +14,9 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetched = fetch(event.request).then((response) => {

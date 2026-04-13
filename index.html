@@ -4,15 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#141414" />
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <title>E-Ink Image Converter</title>
   </head>
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
     <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
+      if ('serviceWorker' in navigator && location.protocol !== 'file:' && !location.port) {
+        navigator.serviceWorker.register('sw.js')
       }
     </script>
   </body>

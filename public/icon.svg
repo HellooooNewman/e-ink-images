@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="64" fill="#141414"/>
-  <rect x="96" y="128" width="320" height="192" rx="8" fill="none" stroke="#6b9fce" stroke-width="16"/>
-  <circle cx="200" cy="224" r="24" fill="#6b9fce"/>
-  <polyline points="160,288 224,240 288,272 352,208 384,240" fill="none" stroke="#6b9fce" stroke-width="12" stroke-linejoin="round"/>
-  <text x="256" y="400" text-anchor="middle" fill="#d4d4d4" font-family="monospace" font-size="48" font-weight="bold">E-INK</text>
+  <rect width="512" height="512" rx="80" fill="#1e1e1e"/>
+  <rect x="80" y="120" width="352" height="212" rx="4" fill="#fff" stroke="#333" stroke-width="8"/>
+  <rect x="96" y="136" width="320" height="180" fill="#e8e8e8"/>
+  <rect x="96" y="136" width="160" height="180" fill="#222"/>
+  <rect x="256" y="136" width="80" height="90" fill="#555"/>
+  <rect x="336" y="136" width="80" height="90" fill="#999"/>
+  <rect x="256" y="226" width="80" height="90" fill="#bbb"/>
+  <rect x="336" y="226" width="80" height="90" fill="#ddd"/>
+  <text x="256" y="410" text-anchor="middle" fill="#6b9fce" font-family="system-ui, sans-serif" font-size="56" font-weight="700" letter-spacing="-2">E-INK</text>
 </svg>
