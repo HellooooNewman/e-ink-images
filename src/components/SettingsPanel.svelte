@@ -296,4 +296,31 @@
     font-size: 0.75rem;
     font-family: var(--font-mono);
   }
+
+  @media (max-width: 480px) {
+    .settings-panel {
+      padding: 0.75rem;
+    }
+
+    .setting-row {
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .setting-header {
+      min-width: 0;
+    }
+
+    .setting-options {
+      flex-wrap: wrap;
+    }
+
+    .text-input {
+      width: 100%;
+    }
+
+    .select-input {
+      width: 100%;
+    }
+  }
 </style>
