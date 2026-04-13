@@ -17,8 +17,8 @@
       if (!file.type.match(/^image\/(jpeg|png|bmp)$/)) continue
       const id = crypto.randomUUID()
       const originalUrl = URL.createObjectURL(file)
-      const processedCanvas = await processImage(file, currentSettings)
-      newImages.push({ id, file, originalUrl, processedCanvas, filename: file.name })
+      const { canvas: processedCanvas, beforeCanvas } = await processImage(file, currentSettings, { brightness: 0, contrast: 0 })
+      newImages.push({ id, file, originalUrl, processedCanvas, beforeCanvas, filename: file.name, brightness: 0, contrast: 0 })
     }
 
     images.update((imgs) => [...imgs, ...newImages])

@@ -58,9 +58,7 @@ const defaultSettings = {
   display: '7.5in-waveshare',
   customWidth: 800,
   customHeight: 480,
-  filenamePattern: '{name}',
-  brightness: 0,
-  contrast: 0,
+  filenamePattern: 'wallpaper_{n}',
 }
 
 /**
@@ -104,5 +102,5 @@ function createSettingsStore() {
 
 export const settings = createSettingsStore()
 
-// images: array of { id, file, originalUrl, processedCanvas, filename }
+// images: array of { id, file, originalUrl, processedCanvas, beforeCanvas, filename, brightness, contrast }
 export const images = writable([])

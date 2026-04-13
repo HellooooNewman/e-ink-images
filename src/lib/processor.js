@@ -56,10 +56,30 @@ function getTarget(img, settings) {
 }
 
 /**
+ * Apply brightness and contrast adjustments to ImageData.
+ * brightness: -100 to 100, contrast: -100 to 100
+ */
+function applyBrightnessContrast(imageData, brightness, contrast) {
+  const data = imageData.data
+  const b = brightness * 2.55 // map -100..100 to -255..255
+  const c = contrast / 100
+  const factor = (1 + c) / (1.0001 - c) // contrast factor
+
+  for (let i = 0; i < data.length; i += 4) {
+    for (let ch = 0; ch < 3; ch++) {
+      let val = data[i + ch]
+      val += b                         // brightness
+      val = factor * (val - 128) + 128 // contrast
+      data[i + ch] = Math.max(0, Math.min(255, val + 0.5)) // clamp
+    }
+  }
+}
+
+/**
  * Process a single image file with the given settings.
  * Returns a canvas element at the target resolution.
  */
-export async function processImage(file, settings) {
+export async function processImage(file, settings, imageAdjustments) {
   const img = await loadImage(file)
   const target = getTarget(img, settings)
 
@@ -105,6 +125,21 @@ export async function processImage(file, settings) {
     ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, target.width, target.height)
   }
 
+  // Apply per-image brightness/contrast adjustments
+  const brightness = imageAdjustments?.brightness || 0
+  const contrast = imageAdjustments?.contrast || 0
+  if (brightness !== 0 || contrast !== 0) {
+    const imageData = ctx.getImageData(0, 0, target.width, target.height)
+    applyBrightnessContrast(imageData, brightness, contrast)
+    ctx.putImageData(imageData, 0, 0)
+  }
+
+  // Snapshot the pre-dithered version for before/after comparison
+  const beforeCanvas = document.createElement('canvas')
+  beforeCanvas.width = target.width
+  beforeCanvas.height = target.height
+  beforeCanvas.getContext('2d').drawImage(canvas, 0, 0)
+
   // Apply dithering with selected palette
   if (settings.dither) {
     const paletteEntry = COLOR_PALETTES.find((p) => p.id === settings.palette)
@@ -114,5 +149,5 @@ export async function processImage(file, settings) {
     ctx.putImageData(imageData, 0, 0)
   }
 
-  return canvas
+  return { canvas, beforeCanvas }
 }

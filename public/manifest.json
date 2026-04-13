@@ -1,0 +1,16 @@
+{
+  "name": "E-Ink Image Converter",
+  "short_name": "E-Ink Convert",
+  "description": "Process images for e-ink displays",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#141414",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

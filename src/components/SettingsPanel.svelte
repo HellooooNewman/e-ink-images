@@ -1,6 +1,15 @@
 <script>
-  import { settings, images, DISPLAY_PRESETS, COLOR_PALETTES } from '../lib/stores.js'
+  import { settings, images, DISPLAY_PRESETS, COLOR_PALETTES, applyFilenamePattern } from '../lib/stores.js'
   import { processImage } from '../lib/processor.js'
+
+  let previewFilenames = $derived(() => {
+    const pat = $settings.filenamePattern || '{name}'
+    return [
+      applyFilenamePattern(pat, 'photo.jpg', 0),
+      applyFilenamePattern(pat, 'sunset.png', 1),
+      applyFilenamePattern(pat, 'landscape.jpg', 2),
+    ]
+  })
 
   // Reprocess all images when settings change
   async function reprocessAll() {
@@ -10,15 +19,17 @@
 
     const updated = []
     for (const img of currentImages) {
-      const processedCanvas = await processImage(img.file, currentSettings)
-      updated.push({ ...img, processedCanvas })
+      const { canvas: processedCanvas, beforeCanvas } = await processImage(img.file, currentSettings, { brightness: img.brightness || 0, contrast: img.contrast || 0 })
+      updated.push({ ...img, processedCanvas, beforeCanvas })
     }
     images.set(updated)
   }
 
   function updateSetting(key, value) {
     settings.update((s) => ({ ...s, [key]: value }))
-    reprocessAll()
+    if (key !== 'filenamePattern') {
+      reprocessAll()
+    }
   }
 </script>
 
@@ -138,6 +149,23 @@
       </label>
     </div>
   </div>
+
+  <div class="setting-row">
+    <div class="setting-header">
+      <span class="setting-label">Filename</span>
+      <span class="setting-hint">{'{name}'} = original, {'{n}'} = number, {'{nn}'} = padded</span>
+    </div>
+    <div class="setting-options">
+      <input
+        type="text"
+        class="text-input"
+        value={$settings.filenamePattern}
+        oninput={(e) => updateSetting('filenamePattern', e.target.value)}
+        placeholder="{'{name}'}"
+      />
+      <span class="filename-preview">{previewFilenames().join(', ')}</span>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -222,5 +250,21 @@
   .dim-separator {
     color: var(--text-muted);
     font-size: 0.85rem;
+  }
+
+  .text-input {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 0.25rem 0.4rem;
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    width: 10rem;
+  }
+
+  .filename-preview {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
   }
 </style>
