@@ -87,7 +87,6 @@
     const img = images[currentIndex].processedCanvas
     const aspect = img.width / img.height
     updateFrameGeometry(aspect)
-    fitCameraToFrame()
 
     flashTransition(() => {
       if (!screenMaterial) return
