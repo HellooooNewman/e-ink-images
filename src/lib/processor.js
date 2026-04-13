@@ -1,9 +1,5 @@
 import { floydSteinberg } from './dither.js'
-
-const LANDSCAPE_W = 800
-const LANDSCAPE_H = 480
-const PORTRAIT_W = 480
-const PORTRAIT_H = 800
+import { DISPLAY_PRESETS, COLOR_PALETTES } from './stores.js'
 
 /**
  * Load a File into an HTMLImageElement.
@@ -25,19 +21,38 @@ function loadImage(file) {
 }
 
 /**
+ * Get the base display dimensions from settings (preset or custom).
+ */
+function getDisplayDimensions(settings) {
+  if (settings.display === 'custom') {
+    return { width: settings.customWidth, height: settings.customHeight }
+  }
+  const preset = DISPLAY_PRESETS.find((p) => p.id === settings.display)
+  return preset
+    ? { width: preset.width, height: preset.height }
+    : { width: 800, height: 480 }
+}
+
+/**
  * Determine target dimensions based on image orientation and settings.
  */
-function getTarget(img, direction) {
+function getTarget(img, settings) {
+  const dims = getDisplayDimensions(settings)
+
   let isLandscape
-  if (direction === 'auto') {
+  if (settings.direction === 'auto') {
     isLandscape = img.naturalWidth >= img.naturalHeight
   } else {
-    isLandscape = direction === 'landscape'
+    isLandscape = settings.direction === 'landscape'
   }
 
+  // For landscape, use wider dimension as width; for portrait, swap
+  const wide = Math.max(dims.width, dims.height)
+  const narrow = Math.min(dims.width, dims.height)
+
   return isLandscape
-    ? { width: LANDSCAPE_W, height: LANDSCAPE_H }
-    : { width: PORTRAIT_W, height: PORTRAIT_H }
+    ? { width: wide, height: narrow }
+    : { width: narrow, height: wide }
 }
 
 /**
@@ -46,7 +61,7 @@ function getTarget(img, direction) {
  */
 export async function processImage(file, settings) {
   const img = await loadImage(file)
-  const target = getTarget(img, settings.direction)
+  const target = getTarget(img, settings)
 
   const canvas = document.createElement('canvas')
   canvas.width = target.width
@@ -90,10 +105,12 @@ export async function processImage(file, settings) {
     ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, target.width, target.height)
   }
 
-  // Apply dithering
+  // Apply dithering with selected palette
   if (settings.dither) {
+    const paletteEntry = COLOR_PALETTES.find((p) => p.id === settings.palette)
+    const colors = paletteEntry ? paletteEntry.colors : [[0, 0, 0], [255, 255, 255]]
     const imageData = ctx.getImageData(0, 0, target.width, target.height)
-    floydSteinberg(imageData)
+    floydSteinberg(imageData, colors)
     ctx.putImageData(imageData, 0, 0)
   }
 

@@ -5,10 +5,11 @@
   let dragOver = $state(false)
   let processing = $state(false)
 
-  async function handleFiles(files) {
-    if (!files || files.length === 0) return
+  async function handleFiles(fileList) {
+    if (!fileList || fileList.length === 0) return
     processing = true
 
+    const files = Array.from(fileList)
     const currentSettings = $settings
     const newImages = []
 

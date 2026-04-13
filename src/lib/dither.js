@@ -1,44 +1,95 @@
 /**
- * Floyd-Steinberg dithering on ImageData.
- * Converts to grayscale, then diffuses quantization error.
+ * Find the nearest color in a palette using Euclidean distance in RGB space.
  */
-export function floydSteinberg(imageData) {
+function nearestColor(r, g, b, palette) {
+  let bestIdx = 0
+  let bestDist = Infinity
+  for (let i = 0; i < palette.length; i++) {
+    const dr = r - palette[i][0]
+    const dg = g - palette[i][1]
+    const db = b - palette[i][2]
+    const dist = dr * dr + dg * dg + db * db
+    if (dist < bestDist) {
+      bestDist = dist
+      bestIdx = i
+    }
+  }
+  return palette[bestIdx]
+}
+
+/**
+ * Floyd-Steinberg dithering with an arbitrary color palette.
+ * Operates in RGB space, diffusing per-channel error to neighbors.
+ *
+ * @param {ImageData} imageData - source pixels (modified in place)
+ * @param {number[][]} palette - array of [r, g, b] colors
+ */
+export function floydSteinberg(imageData, palette) {
   const { width, height, data } = imageData
 
-  // Convert to grayscale float buffer
-  const gray = new Float32Array(width * height)
-  for (let i = 0; i < gray.length; i++) {
-    const r = data[i * 4]
-    const g = data[i * 4 + 1]
-    const b = data[i * 4 + 2]
-    gray[i] = 0.299 * r + 0.587 * g + 0.114 * b
+  // Default to B/W if no palette provided
+  if (!palette) {
+    palette = [[0, 0, 0], [255, 255, 255]]
   }
 
-  // Floyd-Steinberg error diffusion
+  // Work in float buffers so error can go negative
+  const len = width * height
+  const rf = new Float32Array(len)
+  const gf = new Float32Array(len)
+  const bf = new Float32Array(len)
+
+  for (let i = 0; i < len; i++) {
+    rf[i] = data[i * 4]
+    gf[i] = data[i * 4 + 1]
+    bf[i] = data[i * 4 + 2]
+  }
+
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = y * width + x
-      const oldVal = gray[idx]
-      const newVal = oldVal < 128 ? 0 : 255
-      gray[idx] = newVal
-      const err = oldVal - newVal
+      const oldR = rf[idx]
+      const oldG = gf[idx]
+      const oldB = bf[idx]
 
-      if (x + 1 < width) gray[idx + 1] += err * 7 / 16
+      const [newR, newG, newB] = nearestColor(oldR, oldG, oldB, palette)
+
+      rf[idx] = newR
+      gf[idx] = newG
+      bf[idx] = newB
+
+      const errR = oldR - newR
+      const errG = oldG - newG
+      const errB = oldB - newB
+
+      if (x + 1 < width) {
+        rf[idx + 1] += errR * 7 / 16
+        gf[idx + 1] += errG * 7 / 16
+        bf[idx + 1] += errB * 7 / 16
+      }
       if (y + 1 < height) {
-        if (x - 1 >= 0) gray[(y + 1) * width + (x - 1)] += err * 3 / 16
-        gray[(y + 1) * width + x] += err * 5 / 16
-        if (x + 1 < width) gray[(y + 1) * width + (x + 1)] += err * 1 / 16
+        const below = (y + 1) * width
+        if (x - 1 >= 0) {
+          rf[below + x - 1] += errR * 3 / 16
+          gf[below + x - 1] += errG * 3 / 16
+          bf[below + x - 1] += errB * 3 / 16
+        }
+        rf[below + x] += errR * 5 / 16
+        gf[below + x] += errG * 5 / 16
+        bf[below + x] += errB * 5 / 16
+        if (x + 1 < width) {
+          rf[below + x + 1] += errR * 1 / 16
+          gf[below + x + 1] += errG * 1 / 16
+          bf[below + x + 1] += errB * 1 / 16
+        }
       }
     }
   }
 
   // Write back to ImageData
-  for (let i = 0; i < gray.length; i++) {
-    const v = Math.max(0, Math.min(255, Math.round(gray[i])))
-    data[i * 4] = v
-    data[i * 4 + 1] = v
-    data[i * 4 + 2] = v
-    // alpha stays unchanged
+  for (let i = 0; i < len; i++) {
+    data[i * 4] = Math.max(0, Math.min(255, Math.round(rf[i])))
+    data[i * 4 + 1] = Math.max(0, Math.min(255, Math.round(gf[i])))
+    data[i * 4 + 2] = Math.max(0, Math.min(255, Math.round(bf[i])))
   }
 
   return imageData

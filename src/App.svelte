@@ -8,7 +8,7 @@
 <main>
   <header>
     <h1>E-Ink Image Converter</h1>
-    <p class="subtitle">Process images for e-ink displays — 800×480 / 480×800</p>
+    <p class="subtitle">Process images for e-ink displays</p>
   </header>
 
   <div class="layout">
